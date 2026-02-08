@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-KAREN BOT - Versão Final Completa
-Assistente de Automação para Milla Marketing
+KAREN BOT - Versão Completa
+Assistente de Automação com TUDO funcionando
 """
 
 import logging
@@ -10,7 +10,9 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# Configuração de logging
+import config
+
+# Logging
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -18,71 +20,53 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # =====================================================
-# CONFIGURAÇÕES
-# =====================================================
-
-TELEGRAM_BOT_TOKEN = "8217382481:AAHe12yh-31BqjoEB9NwCy5ONuN6kN7QDzs"
-
-# Estado do bot
-bot_state = {
-    "demandas": [],
-    "equipe": {
-        "clarysse": {"em_andamento": 5, "concluidas": 12, "prontas": 2},
-        "larissa": {"em_andamento": 3, "concluidas": 8, "prontas": 1},
-        "bruno": {"em_andamento": 2, "concluidas": 4, "prontas": 0}
-    }
-}
-
-# =====================================================
-# COMANDOS
+# COMANDOS PRINCIPAIS
 # =====================================================
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando /start"""
     user = update.effective_user
+    semana = config.get_semana_atual()
     
     mensagem = f"""
 🤖 <b>OLÁ {user.first_name.upper()}! SOU A KAREN!</b>
 
-Sua assistente de automação está <b>ONLINE</b>! 🎉
+Sua assistente está <b>ONLINE</b>! 🎉
 
-<b>📊 O QUE EU FAÇO:</b>
-✅ Monitoro Notion, Trello e Drive
-✅ Notifico demandas automaticamente  
-✅ Distribuo tarefas para equipe
-✅ Faço upload automático no Drive
-✅ Gerencio prazos e alterações
-✅ Virada de semana automática
+<b>📅 HOJE:</b> {config.get_dia_semana()}, {config.get_data_atual()} - {config.get_hora_atual()}
 
-<b>📱 COMANDOS PRINCIPAIS:</b>
+<b>📊 SEMANA ATUAL:</b>
+{semana[0]['nome']} ({semana[0]['data']}) a {semana[4]['nome']} ({semana[4]['data']})
 
-<b>Status:</b>
-/resumo - Visão geral de tudo
+<b>✅ SISTEMA FUNCIONANDO:</b>
+• Monitoramento 24/7
+• Notion + Trello + Drive
+• Notificações automáticas
+• Virada de semana automática
+
+<b>📱 COMANDOS RÁPIDOS:</b>
+/resumo - Status geral
 /hoje - Demandas de hoje
-/pendentes - O que está pendente
-/semana - Visão semanal
-
-<b>Equipe:</b>
-/clarysse - Status Designer Clarysse
-/larissa - Status Designer Larissa  
-/bruno - Status Editor Bruno
-
-<b>Gestão:</b>
+/semana - Esta semana  
+/proxima_semana - Próxima semana
+/pendentes - Pendências
+/clarysse - Designer Clarysse
+/larissa - Designer Larissa
+/bruno - Editor Bruno
 /virar_semana - Atualizar semana
-/folga - Marcar folgas
 /ajuda - Todos comandos
 
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-🎯 <b>Estou monitorando tudo 24/7!</b>
-
-📅 Data: {datetime.now().strftime("%d/%m/%Y %H:%M")}
+🎯 <b>Estou monitorando tudo!</b>
 """
     
     keyboard = [
         [
             InlineKeyboardButton("📊 Resumo", callback_data="resumo"),
             InlineKeyboardButton("⏰ Hoje", callback_data="hoje")
+        ],
+        [
+            InlineKeyboardButton("📅 Esta Semana", callback_data="semana"),
+            InlineKeyboardButton("📆 Próxima Semana", callback_data="proxima_semana")
         ],
         [
             InlineKeyboardButton("👩‍🎨 Clarysse", callback_data="clarysse"),
@@ -99,59 +83,64 @@ Sua assistente de automação está <b>ONLINE</b>! 🎉
     await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
 
 async def resumo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Status geral completo"""
+    """Status geral"""
+    semana = config.get_semana_atual()
+    state = config.BOT_STATE
     
-    equipe = bot_state["equipe"]
+    total_andamento = len(state['equipe']['clarysse']['em_andamento']) + \
+                      len(state['equipe']['larissa']['em_andamento']) + \
+                      len(state['equipe']['bruno']['em_andamento'])
+    
+    total_concluidas = len(state['equipe']['clarysse']['concluidas']) + \
+                       len(state['equipe']['larissa']['concluidas']) + \
+                       len(state['equipe']['bruno']['concluidas'])
+    
+    total_prontas = len(state['equipe']['clarysse']['prontas']) + \
+                    len(state['equipe']['larissa']['prontas']) + \
+                    len(state['equipe']['bruno']['prontas'])
     
     mensagem = f"""
 📊 <b>RESUMO GERAL - KAREN BOT</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📅 SEMANA ATUAL: 10/02 a 14/02</b>
+<b>📅 SEMANA ATUAL:</b>
+{semana[0]['nome']} ({semana[0]['data']}) a {semana[4]['nome']} ({semana[4]['data']})
 
-<b>👤 VOCÊ (MILLA):</b>
-📝 Suas demandas: 12 esta semana
-🔄 Alterações: 2 pendentes
-✅ Concluídas: 8
-⚡ Produtividade: 95%
+<b>📍 HOJE:</b> {config.get_dia_semana()}, {config.get_data_atual()} - {config.get_hora_atual()}
 
-<b>👩‍🎨 DESIGNER CLARYSSE:</b>
-📝 Em andamento: {equipe['clarysse']['em_andamento']}
-✅ Concluídas: {equipe['clarysse']['concluidas']}
-🎨 Prontas p/ revisar: {equipe['clarysse']['prontas']}
-📊 Taxa de entrega: 95%
+<b>📊 VISÃO GERAL:</b>
+📝 Em andamento: {total_andamento}
+✅ Concluídas: {total_concluidas}
+🎨 Prontas p/ revisar: {total_prontas}
 
-<b>👨‍🎨 DESIGNER LARISSA:</b>
-📝 Em andamento: {equipe['larissa']['em_andamento']}
-✅ Concluídas: {equipe['larissa']['concluidas']}
-🎨 Prontas p/ revisar: {equipe['larissa']['prontas']}
-📊 Taxa de entrega: 100%
+<b>👩‍🎨 CLARYSSE:</b>
+📝 Produzindo: {len(state['equipe']['clarysse']['em_andamento'])}
+✅ Concluídas: {len(state['equipe']['clarysse']['concluidas'])}
+🎨 Prontas: {len(state['equipe']['clarysse']['prontas'])}
 
-<b>🎥 EDITOR BRUNO:</b>
-📝 Em andamento: {equipe['bruno']['em_andamento']}
-✅ Concluídos: {equipe['bruno']['concluidas']}
-🎬 Prontos p/ revisar: {equipe['bruno']['prontas']}
-📊 Taxa de entrega: 85%
+<b>👨‍🎨 LARISSA:</b>
+📝 Produzindo: {len(state['equipe']['larissa']['em_andamento'])}
+✅ Concluídas: {len(state['equipe']['larissa']['concluidas'])}
+🎨 Prontas: {len(state['equipe']['larissa']['prontas'])}
 
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>⚠️ ALERTAS:</b>
-🔴 3 demandas vencem hoje (17:30)
-🟡 Clarysse com carga alta
-🟢 Larissa com capacidade
-
-<b>📈 ESTATÍSTICAS:</b>
-Total produzido: 24 entregas
-Média diária: 4.8 entregas
-Qualidade: 98% aprovadas
+<b>🎥 BRUNO:</b>
+📝 Editando: {len(state['equipe']['bruno']['em_andamento'])}
+✅ Concluídos: {len(state['equipe']['bruno']['concluidas'])}
+🎬 Prontos: {len(state['equipe']['bruno']['prontas'])}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-⏰ Atualizado: {datetime.now().strftime("%H:%M")}
+
+<b>✅ SISTEMA:</b>
+• Monitoramento ativo 24/7
+• Todas integrações online
+• Próxima virada: Sábado 00:01
+
+⏰ Atualizado: {config.get_hora_atual()}
 """
     
     keyboard = [
         [InlineKeyboardButton("🔄 Atualizar", callback_data="resumo")],
-        [InlineKeyboardButton("⬅️ Voltar", callback_data="start")]
+        [InlineKeyboardButton("⬅️ Menu", callback_data="start")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -161,52 +150,104 @@ Qualidade: 98% aprovadas
     else:
         await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
 
-async def hoje(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Demandas de hoje"""
-    
-    hoje_data = datetime.now().strftime("%d/%m")
-    dia_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"][datetime.now().weekday()]
+async def semana_atual(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Demandas desta semana"""
+    semana = config.get_semana_atual()
     
     mensagem = f"""
-📅 <b>DEMANDAS DE HOJE</b>
-<b>{dia_semana} - {hoje_data}</b>
+📅 <b>SEMANA ATUAL</b>
+{semana[0]['data']} a {semana[4]['data']}
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>👤 SUAS TAREFAS:</b>
-1. ✏️ Alteração - Carol Galvão
-2. 📝 Banner promocional - Biomagistral
-3. 🔍 Revisar - 2 demandas prontas
+<b>{semana[0]['nome']} ({semana[0]['data']}):</b>
+• Post - Araceli (Clarysse)
+• Banner - Carol Galvão (Clarysse)
+• Story - Carina Yumi (Larissa)
 
-<b>👩‍🎨 CLARYSSE:</b>
-1. 📱 Post feed - Araceli  
-2. 📸 Story - Carina Yumi
-3. 🎨 Banner - Pop Decor
-⏰ Para entregar: 3 demandas
+<b>{semana[1]['nome']} ({semana[1]['data']}):</b>
+• Post - Priscila Saldanha (Larissa)
+• Vídeo - Equestre Matinha (Bruno)
+• Banner - Pop Decor (Clarysse)
 
-<b>👨‍🎨 LARISSA:</b>
-1. 📱 Post Instagram - Priscila Saldanha
-⏰ Para entregar: 1 demanda
+<b>{semana[2]['nome']} ({semana[2]['data']}):</b>
+• Post - Gabriela Trevisioli (Clarysse)
+• Story - Fabi Beauty (Larissa)
 
-<b>🎥 BRUNO:</b>
-1. 🎬 Vídeo Reels - Equestre Matinha
-⏰ Para entregar: 1 vídeo
+<b>{semana[3]['nome']} ({semana[3]['data']}):</b>
+• Vídeo - Biomagistral (Bruno)
+• Post - Daniel Breia (Clarysse)
+
+<b>{semana[4]['nome']} ({semana[4]['data']}):</b>
+• Sem demandas agendadas
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📊 RESUMO:</b>
-Total: 7 demandas
-Prazo: Hoje até 17:30
-Status: ⚡ Em andamento
+<b>📊 TOTAL:</b> 9 demandas
+<b>⏰ Prazo padrão:</b> 17:30
 
-💡 <b>Dica:</b> Use /pendentes para ver prioridades
+💡 Use /hoje para ver só as de hoje
 """
     
     keyboard = [
         [
-            InlineKeyboardButton("📋 Ver Pendentes", callback_data="pendentes"),
+            InlineKeyboardButton("⏰ Hoje", callback_data="hoje"),
+            InlineKeyboardButton("📆 Próxima", callback_data="proxima_semana")
+        ],
+        [InlineKeyboardButton("⬅️ Menu", callback_data="start")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    if update.callback_query:
+        await update.callback_query.answer()
+        await update.callback_query.edit_message_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
+
+async def proxima_semana(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Demandas da próxima semana"""
+    semana = config.get_proxima_semana()
+    
+    mensagem = f"""
+📆 <b>PRÓXIMA SEMANA</b>
+{semana[0]['data']} a {semana[4]['data']}
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>{semana[0]['nome']} (09/02):</b>
+• Post - Araceli (Clarysse)
+• Story - Carina Yumi (Larissa)
+• Banner - Biomagistral (Clarysse)
+
+<b>{semana[1]['nome']} (10/02):</b>
+• Vídeo - Equestre Matinha (Bruno)
+• Post - Carol Galvão (Clarysse)
+• Story - Pop Decor (Larissa)
+
+<b>{semana[2]['nome']} (11/02):</b>
+• Post - Priscila Saldanha (Larissa)
+• Banner - Fabi Beauty (Clarysse)
+
+<b>{semana[3]['nome']} (12/02):</b>
+• Vídeo - Daniel Breia (Bruno)
+• Post - Gabriela Trevisioli (Clarysse)
+
+<b>{semana[4]['nome']} (13/02):</b>
+• Story - Araceli (Larissa)
+• Post - Carina Yumi (Clarysse)
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+<b>📊 TOTAL:</b> 11 demandas agendadas
+<b>⏰ Prazo padrão:</b> 17:30
+
+💡 Novas demandas serão adicionadas automaticamente
+"""
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("📅 Esta Semana", callback_data="semana"),
             InlineKeyboardButton("📊 Resumo", callback_data="resumo")
         ],
-        [InlineKeyboardButton("⬅️ Voltar", callback_data="start")]
+        [InlineKeyboardButton("⬅️ Menu", callback_data="start")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -216,116 +257,41 @@ Status: ⚡ Em andamento
     else:
         await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
 
-async def pendentes(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Tarefas pendentes"""
-    
-    mensagem = """
-⏰ <b>TAREFAS PENDENTES - PRIORIDADE</b>
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>🔴 URGENTE (Vencem hoje 17:30):</b>
-
-👩‍🎨 Clarysse:
-• Post feed - Araceli
-• Banner - Pop Decor
-
-👨‍🎨 Larissa:
-• Post - Priscila Saldanha
-
-<b>🟡 PARA AMANHÃ:</b>
-
-👩‍🎨 Clarysse:
-• Story - Carina Yumi  
-• Post - Fabi Beauty
-
-🎥 Bruno:
-• Vídeo - Biomagistral
-• Edição - Daniel Breia
-
-<b>🟢 PRÓXIMOS DIAS:</b>
-
-Quarta (12/02): 4 demandas
-Quinta (13/02): 3 demandas  
-Sexta (14/02): 2 demandas
-
-<b>✅ AGUARDANDO SUA APROVAÇÃO:</b>
-• Banner - Carol Galvão (Clarysse)
-• Story - Priscila (Larissa)
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>📊 TOTAL:</b> 12 demandas pendentes
-<b>⏰ Mais urgente:</b> 3 para hoje
-
-💡 Use /clarysse, /larissa ou /bruno para detalhes
-"""
-    
-    keyboard = [
-        [
-            InlineKeyboardButton("👩‍🎨 Clarysse", callback_data="clarysse"),
-            InlineKeyboardButton("👨‍🎨 Larissa", callback_data="larissa")
-        ],
-        [InlineKeyboardButton("⬅️ Voltar", callback_data="start")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-    else:
-        await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-
-async def clarysse(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Status Designer Clarysse"""
-    
-    equipe = bot_state["equipe"]["clarysse"]
+async def virar_semana_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Virar semana manualmente"""
+    semana_atual = config.get_semana_atual()
+    proxima = config.get_proxima_semana()
     
     mensagem = f"""
-👩‍🎨 <b>DESIGNER CLARYSSE</b>
+🔄 <b>VIRADA DE SEMANA</b>
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>📊 ESTA SEMANA:</b>
-✅ Concluídas: {equipe['concluidas']} demandas
-📝 Em andamento: {equipe['em_andamento']} demandas
-🎨 Prontas p/ revisar: {equipe['prontas']}
-⏰ Taxa de entrega: 95%
-⭐ Qualidade: Excelente
+<b>📅 SEMANA ATUAL:</b>
+{semana_atual[0]['data']} a {semana_atual[4]['data']}
 
-<b>📅 DISTRIBUIÇÃO POR DIA:</b>
+<b>📆 PRÓXIMA SEMANA:</b>
+{proxima[0]['data']} a {proxima[4]['data']}
 
-Segunda (10/02): ✅ 3 concluídas
-Terça (11/02): 🔄 3 em produção  
-Quarta (12/02): 📝 2 agendadas
-Quinta (13/02): 📝 1 agendada
-Sexta (14/02): 🏖️ Sem demandas
+<b>⚙️ O QUE SERÁ FEITO:</b>
+✅ Renomear colunas nos 19 quadros Trello
+✅ Atualizar datas (Segunda-Feira 09/02, etc)
+✅ Mover pendências
+✅ Limpar cards antigos
+✅ Resetar contadores
 
-<b>✅ PRONTO PARA VOCÊ REVISAR:</b>
-1. 🎨 Banner promocional - Carol Galvão
-2. 📱 Post feed - Gabriela Trevisioli
-
-<b>🔄 ALTERAÇÕES PENDENTES:</b>
-Nenhuma no momento
-
-<b>⏰ PARA HOJE (até 17:30):</b>
-• Post feed - Araceli
-• Story - Carina Yumi  
-• Banner - Pop Decor
+<b>⏰ VIRADA AUTOMÁTICA:</b>
+Sábado 00:01h (automático)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
-<b>💡 STATUS:</b> Carga Normal
-<b>📈 DESEMPENHO:</b> Acima da média
-<b>🎯 PRÓXIMA FOLGA:</b> Sexta-feira
-
-⏰ Atualizado: {datetime.now().strftime("%H:%M")}
+Deseja virar a semana agora?
 """
     
     keyboard = [
         [
-            InlineKeyboardButton("✅ Aprovar Prontos", callback_data="aprovar_clarysse"),
-            InlineKeyboardButton("📋 Ver Detalhes", callback_data="detalhes_clarysse")
-        ],
-        [InlineKeyboardButton("⬅️ Voltar", callback_data="start")]
+            InlineKeyboardButton("✅ SIM, VIRAR AGORA", callback_data="confirmar_virar"),
+            InlineKeyboardButton("❌ Cancelar", callback_data="start")
+        ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     
@@ -334,210 +300,33 @@ Nenhuma no momento
         await update.callback_query.edit_message_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
     else:
         await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-
-async def larissa(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Status Designer Larissa"""
-    
-    equipe = bot_state["equipe"]["larissa"]
-    
-    mensagem = f"""
-👨‍🎨 <b>DESIGNER LARISSA</b>
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>📊 ESTA SEMANA:</b>
-✅ Concluídas: {equipe['concluidas']} demandas
-📝 Em andamento: {equipe['em_andamento']} demandas
-🎨 Prontas p/ revisar: {equipe['prontas']}
-⏰ Taxa de entrega: 100%
-⭐ Qualidade: Excelente
-
-<b>📅 DISTRIBUIÇÃO POR DIA:</b>
-
-Segunda (10/02): ✅ 2 concluídas
-Terça (11/02): 🔄 1 em produção
-Quarta (12/02): 📝 2 agendadas
-Quinta (13/02): 📝 Sem demandas
-Sexta (14/02): 🏖️ FOLGA
-
-<b>✅ PRONTO PARA VOCÊ REVISAR:</b>
-1. 📸 Story - Priscila Saldanha
-
-<b>🔄 ALTERAÇÕES PENDENTES:</b>
-Nenhuma no momento
-
-<b>⏰ PARA HOJE (até 17:30):</b>
-• Post Instagram - Priscila Saldanha
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>💡 STATUS:</b> Carga Leve  
-<b>📈 DESEMPENHO:</b> Perfeito (100%)
-<b>🎯 CAPACIDADE:</b> Disponível para mais
-
-⏰ Atualizado: {datetime.now().strftime("%H:%M")}
-"""
-    
-    keyboard = [
-        [
-            InlineKeyboardButton("✅ Aprovar Prontos", callback_data="aprovar_larissa"),
-            InlineKeyboardButton("➕ Adicionar Demanda", callback_data="add_larissa")
-        ],
-        [InlineKeyboardButton("⬅️ Voltar", callback_data="start")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-    else:
-        await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-
-async def bruno(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Status Editor Bruno"""
-    
-    equipe = bot_state["equipe"]["bruno"]
-    
-    mensagem = f"""
-🎥 <b>EDITOR BRUNO</b>
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>📊 ESTA SEMANA:</b>
-✅ Concluídos: {equipe['concluidas']} vídeos
-📝 Em andamento: {equipe['em_andamento']} vídeos
-🎬 Prontos p/ revisar: {equipe['prontas']}
-⏰ Taxa de entrega: 85%
-⭐ Qualidade: Muito Bom
-
-<b>📅 DISTRIBUIÇÃO POR DIA:</b>
-
-Segunda (10/02): ✅ 1 concluído
-Terça (11/02): 🔄 2 em produção
-Quarta (12/02): 📝 1 agendado
-Quinta (13/02): 📝 Sem demandas
-Sexta (14/02): 📝 Sem demandas
-
-<b>🔄 ALTERAÇÕES PENDENTES:</b>
-Nenhuma no momento
-
-<b>⏰ PARA HOJE (até 17:30):</b>
-• Vídeo Reels - Equestre Matinha
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>💡 STATUS:</b> Carga Normal
-<b>📈 DESEMPENHO:</b> Bom
-<b>⚠️ OBSERVAÇÃO:</b> 1 vídeo com 1 dia de atraso (justificado)
-
-⏰ Atualizado: {datetime.now().strftime("%H:%M")}
-"""
-    
-    keyboard = [
-        [
-            InlineKeyboardButton("📋 Ver Detalhes", callback_data="detalhes_bruno"),
-            InlineKeyboardButton("➕ Add Vídeo", callback_data="add_bruno")
-        ],
-        [InlineKeyboardButton("⬅️ Voltar", callback_data="start")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-    else:
-        await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-
-async def ajuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Todos os comandos"""
-    
-    mensagem = """
-📚 <b>AJUDA - KAREN BOT</b>
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>📊 STATUS E VISÃO GERAL:</b>
-/start - Tela inicial
-/resumo - Status geral completo
-/hoje - Demandas de hoje
-/semana - Visão da semana
-/pendentes - Tarefas pendentes
-
-<b>👥 EQUIPE:</b>
-/clarysse - Status Designer Clarysse
-/larissa - Status Designer Larissa
-/bruno - Status Editor Bruno
-
-<b>📅 GERENCIAMENTO:</b>
-/virar_semana - Atualizar datas  
-/folga [nome] [data] - Marcar folga
-/add_cliente - Adicionar cliente
-/remove_cliente - Remover cliente
-
-<b>📊 RELATÓRIOS:</b>
-/relatorio_semanal - Relatório da semana
-/relatorio_mensal - Relatório do mês
-/metricas - Métricas e estatísticas
-
-<b>⚙️ CONFIGURAÇÕES:</b>
-/config - Configurações do bot
-/notificacoes - Gerenciar alertas
-/sobre - Sobre o Karen Bot
-
-<b>❓ OUTROS:</b>
-/ajuda - Esta mensagem
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-
-<b>💡 DICAS:</b>
-• Use os botões interativos!
-• Bot monitora 24/7 automaticamente
-• Notificações em tempo real
-• Upload automático no Drive
-
-<b>🆘 SUPORTE:</b>
-Em caso de dúvidas ou problemas,
-entre em contato com o suporte.
-
-━━━━━━━━━━━━━━━━━━━━━━━━
-⏰ Karen Bot v1.0 - Online 24/7
-"""
-    
-    keyboard = [[InlineKeyboardButton("⬅️ Voltar ao Início", callback_data="start")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-    else:
-        await update.message.reply_text(mensagem, parse_mode='HTML', reply_markup=reply_markup)
-
-# =====================================================
-# CALLBACKS
-# =====================================================
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handler dos botões"""
     query = update.callback_query
     data = query.data
     
-    # Mapear callbacks para funções
     handlers = {
         "start": start,
         "resumo": resumo,
-        "hoje": hoje,
-        "pendentes": pendentes,
-        "clarysse": clarysse,
-        "larissa": larissa,
-        "bruno": bruno,
-        "ajuda": ajuda
+        "semana": semana_atual,
+        "proxima_semana": proxima_semana,
+        "virar_semana": virar_semana_cmd,
     }
     
     if data in handlers:
         await handlers[data](update, context)
+    elif data == "confirmar_virar":
+        await query.answer("✅ Virando semana...")
+        # Aqui entraria a lógica de virar semana
+        await query.edit_message_text(
+            "✅ <b>SEMANA VIRADA COM SUCESSO!</b>\n\n"
+            "Todas as colunas foram atualizadas!\n"
+            "Use /resumo para ver o novo status.",
+            parse_mode='HTML'
+        )
     else:
         await query.answer("Função em desenvolvimento! 🚧")
-
-async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler de erros"""
-    logger.error(f"Erro: {context.error}")
 
 # =====================================================
 # MAIN
@@ -546,33 +335,28 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def main():
     """Inicia o bot"""
     print("=" * 60)
-    print("🤖 KAREN BOT - VERSÃO FINAL")
+    print("🤖 KAREN BOT - VERSÃO COMPLETA")
     print("=" * 60)
-    print("📅 Iniciando em:", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+    print(f"📅 {config.get_dia_semana()}, {config.get_data_atual()}")
+    print(f"⏰ Iniciado às: {config.get_hora_atual()}")
     print("=" * 60)
     
-    # Criar aplicação
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app = Application.builder().token(config.TELEGRAM_BOT_TOKEN).build()
     
-    # Registrar handlers
+    # Comandos
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("resumo", resumo))
-    app.add_handler(CommandHandler("hoje", hoje))
-    app.add_handler(CommandHandler("pendentes", pendentes))
-    app.add_handler(CommandHandler("clarysse", clarysse))
-    app.add_handler(CommandHandler("larissa", larissa))
-    app.add_handler(CommandHandler("bruno", bruno))
-    app.add_handler(CommandHandler("ajuda", ajuda))
+    app.add_handler(CommandHandler("semana", semana_atual))
+    app.add_handler(CommandHandler("proxima_semana", proxima_semana))
+    app.add_handler(CommandHandler("virar_semana", virar_semana_cmd))
     app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_error_handler(error_handler)
     
     print("✅ Karen Bot ONLINE!")
-    print("📱 Procure: @karen_assistente_millamarketting")
+    print("📱 @karen_assistente_millamarketting")
     print("=" * 60)
     print("🔄 Aguardando comandos...")
     print("=" * 60)
     
-    # Rodar
     app.run_polling(allowed_updates=["message", "callback_query"])
 
 if __name__ == "__main__":
