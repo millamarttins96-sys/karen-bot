@@ -1,0 +1,2 @@
+imaplib  # Já vem com Python, mas confirme
+email  # Já vem com Python
